@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identity Provider - Login</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Extract SAMLRequest and RelayState from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const samlRequest = urlParams.get('SAMLRequest');
+            const relayState = urlParams.get('RelayState');
+
+            console.log('DOMContentLoaded: samlRequest = ' + samlRequest + ', relayState = ' + relayState);
+
+            document.getElementById('loginForm').addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                const response = await fetch('/auth/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, samlRequest, relayState })
+                });
+
+                if (response.ok) {
+                    console.log('/auth/validate: response is ok');
+
+                    var textData = await response.text();
+                    console.log('/auth/validate: textData = ' + textData);
+
+                    var jsonData = JSON.parse(textData);
+                    console.log('/auth/validate: jsonData = ' + jsonData);
+
+                    var SAMLResponse = jsonData.samlResponse;
+                    var RelayState = jsonData.relayState;
+
+                    console.log('/auth/validate: SAMLResponse = ' + SAMLResponse + ', RelayState = ' + RelayState);
+
+                    // Create a form to submit the SAMLResponse back to the SP
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    // form.action = 'https://www.myserviceprovider.com/auth/saml/acs';
+                    form.action = 'https://localhost:7012/auth/saml/acs';
+
+
+                    const samlField = document.createElement('input');
+                    samlField.type = 'hidden';
+                    samlField.name = 'SAMLResponse';
+                    samlField.value = SAMLResponse;
+
+                    const relayField = document.createElement('input');
+                    relayField.type = 'hidden';
+                    relayField.name = 'RelayState';
+                    relayField.value = RelayState;
+
+                    form.appendChild(samlField);
+                    form.appendChild(relayField);
+                    document.body.appendChild(form);
+                    form.submit();
+                } else {
+                    alert('Invalid credentials');
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Identity Provider - Login</h1>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+    </form>
+</body>
+</html>
